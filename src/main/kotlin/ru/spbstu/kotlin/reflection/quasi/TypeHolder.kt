@@ -11,7 +11,10 @@ import kotlin.reflect.jvm.internal.impl.types.KotlinType
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.reflect
 
-val KType.type: KotlinType by JvmReflectionDelegate
+internal val KType.type: KotlinType by JvmReflectionDelegate
+
+val KType.ktype: KotlinType
+    get() = this.apply{ toString() }.type
 
 data class TypeHolder(val clazz: Class<*>, val arguments: List<TypeHolder>, val isNullable: Boolean) {
     private fun formatArgs() = if(arguments.isEmpty()) "" else arguments.joinToString(prefix = "<", postfix = ">")
@@ -57,11 +60,11 @@ inline fun<reified T> buildTH(type: KotlinType): TypeHolder {
 }
 
 inline fun<reified T> buildTH(type: KType): TypeHolder {
-    return buildTH<T>(type.type)
+    return buildTH<T>(type.ktype)
 }
 
 fun buildTHRaw(type: KType): TypeHolder {
-    return buildTH(type.javaType, type.type)
+    return buildTH(type.javaType, type.ktype)
 }
 
 inline fun<reified T> buildTH(noinline discriminator: (T) -> Unit): TypeHolder {
