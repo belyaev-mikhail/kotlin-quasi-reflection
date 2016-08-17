@@ -6,7 +6,6 @@ abstract class SuperClassTypeToken<T>() {
     val type: Type = this.javaClass.genericSuperclass.let { it as ParameterizedType }.actualTypeArguments[0]
 }
 
-
 inline fun <reified T> javaTypeOf(): Type {
     val disc = object : SuperClassTypeToken<T>() {}
     return disc.type
