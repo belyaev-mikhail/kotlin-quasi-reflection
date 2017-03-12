@@ -1,7 +1,6 @@
 package ru.spbstu.kotlin.reflection.quasi.java
 
 import kotlin.reflect.KProperty
-import kotlin.reflect.declaredMemberProperties
 import kotlin.reflect.memberProperties
 
 object JvmReflectionDelegate {
@@ -12,7 +11,7 @@ object JvmReflectionDelegate {
                     || it.name == "is${property.name.capitalize()}"
                     || it.name == "get${property.name.capitalize()}"
         } ?: throw NoSuchFieldException("${property.name}")
-        return method(thisRef) as T
+        method(thisRef) as T
     }
 
     inline operator fun<reified T: Any?> setValue(thisRef: Any?, property: KProperty<*>, newValue: T): Unit = run {

@@ -1,38 +1,40 @@
 package ru.spbstu.kotlin.reflection.quasi
 
-import ru.spbstu.kotlin.reflection.quasi.java.*
+import ru.spbstu.kotlin.reflection.quasi.java.erasure
+import ru.spbstu.kotlin.reflection.quasi.java.javaTypeOf
 import java.lang.reflect.GenericArrayType
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
-import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.jvm.internal.impl.platform.JavaToKotlinClassMap
 import kotlin.reflect.jvm.internal.impl.types.KotlinType
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.reflect
-import kotlin.reflect.jvm.internal.impl.platform.JavaToKotlinClassMap
-
-internal val KType.type: KotlinType by JvmReflectionDelegate
-
-val KType.ktype: KotlinType
-    get() = this.apply{ toString() }.type
 
 enum class Mutability{ NONE, MUTABLE, IMMUTABLE }
 
 data class TypeHolder(
         val clazz: Class<*>,
-        val arguments: List<TypeHolder>,
-        val isNullable: Boolean,
-        val mutability: Mutability
+        val arguments: List<TypeHolder> = listOf(),
+        val isNullable: Boolean = false,
+        val mutability: Mutability = Mutability.NONE,
+        val annotations: List<Annotation> = listOf()
 ) {
     private fun formatArgs() = if(arguments.isEmpty()) "" else arguments.joinToString(prefix = "<", postfix = ">")
     private fun formatQuestionMark() = if(isNullable) "?" else ""
     private fun formatMutability() = when(mutability){ Mutability.MUTABLE -> "[Mutable]"; else -> "" }
-    override fun toString() = "${formatMutability()}${clazz.simpleName}${formatArgs()}${formatQuestionMark()}"
+    private fun formatAnnotations() = if(annotations.isEmpty()) "" else annotations.map { "@$it " }.joinToString("")
+
+    override fun toString() = "${formatAnnotations()}${formatMutability()}${clazz.canonicalName}${formatArgs()}${formatQuestionMark()}"
 }
 
-fun TypeHolder.nonNullable() = copy(isNullable = false)
-fun TypeHolder.erasure() = copy(arguments = emptyList())
+val TypeHolder.nonNullable: TypeHolder get() = copy(isNullable = false)
+val TypeHolder.nullable: TypeHolder get() = copy(isNullable = true)
+val TypeHolder.mutable: TypeHolder get() = copy(mutability = Mutability.MUTABLE)
+val TypeHolder.immutable: TypeHolder get() = copy(mutability = Mutability.IMMUTABLE)
+val TypeHolder.erasure: TypeHolder get() = copy(arguments = emptyList())
+val TypeHolder.isPrimitive: Boolean get() = clazz.isPrimitive
 
 fun buildTypeHolder(java: Type, kotlin: KotlinType): TypeHolder = run {
     val j2k = JavaToKotlinClassMap.INSTANCE
@@ -50,8 +52,8 @@ fun buildTypeHolder(java: Type, kotlin: KotlinType): TypeHolder = run {
                 val resArgs = listOf(javaArgs).zip(kotlinArgs){ jArg, kArg ->
                     buildTypeHolder(jArg, kArg.type)
                 }
-                TypeHolder(Array<Any?>::class.java, resArgs, kotlin.isMarkedNullable, mutability)
-            } else TypeHolder(java, emptyList(), kotlin.isMarkedNullable, mutability)
+                TypeHolder(Array<Any?>::class.java, resArgs, kotlin.isMarkedNullable, mutability, kotlin.computeAnnotations())
+            } else TypeHolder(java, emptyList(), kotlin.isMarkedNullable, mutability, kotlin.computeAnnotations())
         }
         is ParameterizedType -> {
             val javaArgs = java.actualTypeArguments
@@ -59,7 +61,7 @@ fun buildTypeHolder(java: Type, kotlin: KotlinType): TypeHolder = run {
             val resArgs = javaArgs.zip(kotlinArgs){ jArg, kArg ->
                 buildTypeHolder(jArg, kArg.type)
             }
-            TypeHolder(java.erasure, resArgs, kotlin.isMarkedNullable, mutability)
+            TypeHolder(java.erasure, resArgs, kotlin.isMarkedNullable, mutability, kotlin.computeAnnotations())
         }
         is WildcardType -> {
             val ub = java.upperBounds.firstOrNull()
@@ -76,7 +78,7 @@ fun buildTypeHolder(java: Type, kotlin: KotlinType): TypeHolder = run {
             val resArgs = listOf(javaArgs).zip(kotlinArgs){ jArg, kArg ->
                 buildTypeHolder(jArg, kArg.type)
             }
-            TypeHolder(Array<Any?>::class.java, resArgs, kotlin.isMarkedNullable, mutability)
+            TypeHolder(Array<Any?>::class.java, resArgs, kotlin.isMarkedNullable, mutability, kotlin.computeAnnotations())
         }
         else -> TODO("Sorry, not supported yet: $java -> $kotlin")
     }
@@ -88,11 +90,11 @@ inline fun<reified T> buildTypeHolder(type: KotlinType): TypeHolder {
 }
 
 inline fun<reified T> buildTypeHolder(type: KType): TypeHolder {
-    return buildTypeHolder<T>(type.ktype)
+    return buildTypeHolder<T>(type.kotlinType)
 }
 
 fun buildTHRaw(type: KType): TypeHolder {
-    return buildTypeHolder(type.javaType, type.ktype)
+    return buildTypeHolder(type.javaType, type.kotlinType)
 }
 
 inline fun<reified T, R> buildTypeHolderFromInput(noinline discriminator: (T) -> R): TypeHolder {
@@ -102,3 +104,5 @@ inline fun<reified T, R> buildTypeHolderFromInput(noinline discriminator: (T) ->
 inline fun<reified T> buildTypeHolderFromOutput(noinline discriminator: () -> T): TypeHolder {
     return buildTypeHolder<T>(discriminator.reflect()?.returnType!!)
 }
+
+
