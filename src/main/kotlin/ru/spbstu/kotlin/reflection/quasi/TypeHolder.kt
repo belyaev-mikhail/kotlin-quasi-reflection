@@ -6,7 +6,9 @@ import java.lang.reflect.GenericArrayType
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.jvm.internal.impl.name.FqNameUnsafe
 import kotlin.reflect.jvm.internal.impl.platform.JavaToKotlinClassMap
 import kotlin.reflect.jvm.internal.impl.types.KotlinType
 import kotlin.reflect.jvm.javaType
@@ -105,4 +107,14 @@ inline fun<reified T> buildTypeHolderFromOutput(noinline discriminator: () -> T)
     return buildTypeHolder<T>(discriminator.reflect()?.returnType!!)
 }
 
+fun kclassForName(name: String): KClass<*> {
+    val j2k = JavaToKotlinClassMap.INSTANCE
+    val jclass = j2k.mapKotlinToJava(FqNameUnsafe(name))?.asSingleFqName()?.toString() ?: name
+    return Class.forName(jclass).kotlin
+}
 
+fun kclassForName(name: String, initialize: Boolean, loader: ClassLoader): KClass<*> {
+    val j2k = JavaToKotlinClassMap.INSTANCE
+    val jclass = j2k.mapKotlinToJava(FqNameUnsafe(name))?.asSingleFqName()?.toString() ?: name
+    return Class.forName(jclass, initialize, loader).kotlin
+}

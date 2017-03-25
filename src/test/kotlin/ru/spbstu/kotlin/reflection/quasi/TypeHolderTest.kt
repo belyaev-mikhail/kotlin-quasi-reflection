@@ -1,6 +1,9 @@
 package ru.spbstu.kotlin.reflection.quasi
 
 import org.junit.Test
+import kotlin.reflect.jvm.internal.impl.builtins.KotlinBuiltIns
+import kotlin.reflect.jvm.internal.impl.name.FqNameUnsafe
+import kotlin.reflect.jvm.internal.impl.platform.JavaToKotlinClassMap
 import kotlin.reflect.memberProperties
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -86,6 +89,11 @@ class TypeHolderTest {
                 arrayTH(intTH),
                 buildTHRaw(TestClass::class.memberProperties.first().returnType)
         )
+    }
+
+    @Test
+    fun pground() {
+        assertEquals(kclassForName("kotlin.String"), String::class)
     }
 }
 
