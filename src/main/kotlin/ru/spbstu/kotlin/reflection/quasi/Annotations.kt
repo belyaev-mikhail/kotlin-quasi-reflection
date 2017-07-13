@@ -34,7 +34,7 @@ inline fun<reified A: kotlin.Annotation> UncookedAnnotation.asAnnotation(): A? {
                 }
                 "equals" -> { proxy: Any, args: Array<Any>? ->
                     val that = args!![0]
-                    proxy.javaClass == that.javaClass
+                    realClass.isInstance(that)
                          && arguments.all { e ->
                                 java.util.Objects.deepEquals(
                                         that.javaClass.getDeclaredMethod(e.key)?.invoke(proxy),

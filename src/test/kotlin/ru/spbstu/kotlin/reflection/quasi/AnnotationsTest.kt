@@ -1,9 +1,11 @@
 package ru.spbstu.kotlin.reflection.quasi
 
+import org.intellij.lang.annotations.Language
 import org.jetbrains.annotations.NotNull
 import org.junit.Test
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.reflect
+import kotlin.reflect.memberFunctions
 import kotlin.reflect.memberProperties
 import kotlin.test.assertEquals
 
@@ -15,6 +17,15 @@ annotation class Str(val k: String = "Hi")
 
 @kotlin.annotation.Target(AnnotationTarget.TYPE, AnnotationTarget.FUNCTION)
 annotation class Many(vararg val contents: Int)
+
+@kotlin.annotation.Target(
+        AnnotationTarget.EXPRESSION,
+        AnnotationTarget.LOCAL_VARIABLE,
+        AnnotationTarget.TYPE,
+        AnnotationTarget.VALUE_PARAMETER,
+        AnnotationTarget.FUNCTION
+)
+annotation class Omni(val i: Int = 4)
 
 @Whatever(6) @Str("it > 50")
 fun ddd(x: @Whatever(1) @Str("it > 50") Int) {}
@@ -57,6 +68,19 @@ class AnnotationsTest {
         assertEquals(
                 UncookedAnnotation(Many::class.java.canonicalName, mapOf("contents" to listOf<Any>(2, 4, 56))).asAnnotation<Many>(),
                 buildTypeHolderFromInput(::ggg).annotations.first() as Many
+        )
+    }
+
+    @Test
+    @Omni(2)
+    fun uncontrolled() {
+        @Omni(2)
+        fun ggg(@Omni(2) x: @Omni(2) Int) {
+        }
+
+        assertEquals(
+                (javaClass.kotlin.memberFunctions.find { it.name == "uncontrolled" })?.annotations?.first { it is Omni },
+                buildTypeHolderFromInput(::ggg).annotations.first() as Omni
         )
     }
 }
