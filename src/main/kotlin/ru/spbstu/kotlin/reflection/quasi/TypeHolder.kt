@@ -26,7 +26,7 @@ data class TypeHolder(
     private fun formatArgs() = if(arguments.isEmpty()) "" else arguments.joinToString(prefix = "<", postfix = ">")
     private fun formatQuestionMark() = if(isNullable) "?" else ""
     private fun formatMutability() = when(mutability){ Mutability.MUTABLE -> "[Mutable]"; else -> "" }
-    private fun formatAnnotations() = if(annotations.isEmpty()) "" else annotations.map { "@$it " }.joinToString("")
+    private fun formatAnnotations() = if(annotations.isEmpty()) "" else annotations.joinToString(" ", postfix = " ")
 
     override fun toString() = "${formatAnnotations()}${formatMutability()}${clazz.canonicalName}${formatArgs()}${formatQuestionMark()}"
 }
@@ -103,9 +103,11 @@ inline fun<reified T, R> buildTypeHolderFromInput(noinline discriminator: (T) ->
     return buildTypeHolder<T>(discriminator.reflect()?.parameters?.first()?.type!!)
 }
 
-inline fun<reified T> buildTypeHolderFromOutput(noinline discriminator: () -> T): TypeHolder {
+inline fun<reified T> typeOf(noinline discriminator: () -> T): TypeHolder {
     return buildTypeHolder<T>(discriminator.reflect()?.returnType!!)
 }
+
+fun <T> declval(): T = error("any() should never be called directly")
 
 fun kclassForName(name: String): KClass<*> {
     val j2k = JavaToKotlinClassMap.INSTANCE
