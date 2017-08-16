@@ -26,7 +26,7 @@ inline fun<reified A: kotlin.Annotation> UncookedAnnotation.asAnnotation(): A? {
     val anno = UncookedAnnotation@this
     val classLoader = this.javaClass.classLoader
     try {
-        val realClass = Class.forName(fullName, true, classLoader)
+        val realClass = kclassForName(fullName, true, classLoader).java
         val expando = realClass.methods.asSequence().map { method ->
             method.name to when (method.name) {
                 "toString" -> { proxy: Any, args: Array<Any>? ->
@@ -34,7 +34,7 @@ inline fun<reified A: kotlin.Annotation> UncookedAnnotation.asAnnotation(): A? {
                 }
                 "equals" -> { proxy: Any, args: Array<Any>? ->
                     val that = args!![0]
-                    proxy.javaClass == that.javaClass
+                    realClass.isInstance(that)
                          && arguments.all { e ->
                                 java.util.Objects.deepEquals(
                                         that.javaClass.getDeclaredMethod(e.key)?.invoke(proxy),

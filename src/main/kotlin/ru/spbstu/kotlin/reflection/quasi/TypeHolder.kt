@@ -6,7 +6,9 @@ import java.lang.reflect.GenericArrayType
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.jvm.internal.impl.name.FqNameUnsafe
 import kotlin.reflect.jvm.internal.impl.platform.JavaToKotlinClassMap
 import kotlin.reflect.jvm.internal.impl.types.KotlinType
 import kotlin.reflect.jvm.javaType
@@ -24,7 +26,7 @@ data class TypeHolder(
     private fun formatArgs() = if(arguments.isEmpty()) "" else arguments.joinToString(prefix = "<", postfix = ">")
     private fun formatQuestionMark() = if(isNullable) "?" else ""
     private fun formatMutability() = when(mutability){ Mutability.MUTABLE -> "[Mutable]"; else -> "" }
-    private fun formatAnnotations() = if(annotations.isEmpty()) "" else annotations.map { "@$it " }.joinToString("")
+    private fun formatAnnotations() = if(annotations.isEmpty()) "" else annotations.joinToString(" ", postfix = " ")
 
     override fun toString() = "${formatAnnotations()}${formatMutability()}${clazz.canonicalName}${formatArgs()}${formatQuestionMark()}"
 }
@@ -101,8 +103,20 @@ inline fun<reified T, R> buildTypeHolderFromInput(noinline discriminator: (T) ->
     return buildTypeHolder<T>(discriminator.reflect()?.parameters?.first()?.type!!)
 }
 
-inline fun<reified T> buildTypeHolderFromOutput(noinline discriminator: () -> T): TypeHolder {
+inline fun<reified T> typeOf(noinline discriminator: () -> T): TypeHolder {
     return buildTypeHolder<T>(discriminator.reflect()?.returnType!!)
 }
 
+fun <T> declval(): T = error("any() should never be called directly")
 
+fun kclassForName(name: String): KClass<*> {
+    val j2k = JavaToKotlinClassMap.INSTANCE
+    val jclass = j2k.mapKotlinToJava(FqNameUnsafe(name))?.asSingleFqName()?.toString() ?: name
+    return Class.forName(jclass).kotlin
+}
+
+fun kclassForName(name: String, initialize: Boolean, loader: ClassLoader): KClass<*> {
+    val j2k = JavaToKotlinClassMap.INSTANCE
+    val jclass = j2k.mapKotlinToJava(FqNameUnsafe(name))?.asSingleFqName()?.toString() ?: name
+    return Class.forName(jclass, initialize, loader).kotlin
+}
